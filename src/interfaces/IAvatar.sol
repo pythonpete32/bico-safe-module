@@ -92,5 +92,5 @@ interface IAvatar {
         address gasToken,
         address payable refundReceiver,
         bytes memory signatures
-    ) external payable virtual returns (bool success)
+    ) external payable returns (bool success);
 }
