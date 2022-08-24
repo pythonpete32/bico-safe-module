@@ -12,7 +12,7 @@ update:; forge update
 build    :; forge build
 test     :; forge test
 test_f	 :; forge test --fork-url ${MAINNET_RPC} --etherscan-api-key ${ETHERSCAN_KEY}
-trace    :; forge test -vvv
+trace    :; forge test -vvvvv
 clean    :; forge clean
 snapshot :; forge snapshot
 fmt      :; forge fmt
