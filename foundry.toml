@@ -4,7 +4,8 @@ out = 'out'
 libs = ['lib']
 remappings = [
     "solmate/=lib/solmate/src/",
-    "forge-std/=lib/forge-std/src/"
+    "forge-std/=lib/forge-std/src/",
+    "safe-contracts/=lib/safe-contracts/contracts/",
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
