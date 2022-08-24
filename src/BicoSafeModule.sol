@@ -4,11 +4,15 @@ pragma solidity ^0.8.15;
 import "safe-contracts/common/Enum.sol";
 import {IAvatar} from "./interfaces/IAvatar.sol";
 import {Owned} from "solmate/auth/Owned.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract BicoSafeModule is Owned {
     /*///////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
+
+    error ClaimBicoFailed();
+    error StakeBicoFailed();
 
     /*///////////////////////////////////////////////////////////////
                             EVENTS
@@ -18,10 +22,14 @@ contract BicoSafeModule is Owned {
     event AvatarSet(address indexed previousAvatar, address indexed newAvatar);
     /// @dev Emitted each time the Target is set.
     event TargetSet(address indexed previousTarget, address indexed newTarget);
-
-    /*///////////////////////////////////////////////////////////////
-                            INMUTABLES / CONSTANTS
-    //////////////////////////////////////////////////////////////*/
+    /// @dev Emitted when BICO token is set
+    event BicoSet(address indexed bico);
+    /// @dev Emitted when Vesting contract is set
+    event VestingSet(address indexed vesting);
+    /// @dev Emitted when BICO is claimed
+    event ClaimedBico(uint256 amount);
+    /// @dev Emitted when BICO is staked
+    event StakedBico(uint256 amount);
 
     /*///////////////////////////////////////////////////////////////
                             STORAGE
@@ -31,6 +39,10 @@ contract BicoSafeModule is Owned {
     address public avatar;
     /// @dev Address that this module will pass transactions to.
     address public target;
+    /// @dev BICO token address
+    ERC20 public bico;
+    /// @dev Vesting contract address
+    address public vesting;
 
     /*///////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -38,25 +50,82 @@ contract BicoSafeModule is Owned {
 
     constructor(address _owner) Owned(_owner) {}
 
+    /// @dev Set up the module
+    /// @notice This function must be called before the module can be used.
+    /// @param _avatar Address that will ultimately execute function calls.
+    /// @param _bico BICO token address
+    /// @param _vesting Vesting contract address
+    function setupModule(
+        address _avatar,
+        address _bico,
+        address _vesting
+    ) external onlyOwner {
+        require(_avatar != address(0), "BicoSafeModule: avatar cannot be zero");
+        setAvatar(_avatar);
+        setTarget(_avatar);
+        vesting = _vesting;
+        bico = ERC20(_bico);
+        emit AvatarSet(address(0), _avatar);
+        emit TargetSet(address(0), _avatar);
+        emit BicoSet(_bico);
+        emit VestingSet(_vesting);
+    }
+
     /*///////////////////////////////////////////////////////////////
                             ADMIN ACTIONS
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Sets the avatar to a new avatar (`newAvatar`).
     /// @notice Can only be called by the current owner.
-    function setAvatar(address _avatar) public onlyOwner {
+    function setAvatar(address _newAvatar) public onlyOwner {
         address previousAvatar = avatar;
-        avatar = _avatar;
-        emit AvatarSet(previousAvatar, _avatar);
+        avatar = _newAvatar;
+        emit AvatarSet(previousAvatar, _newAvatar);
     }
 
     /// @dev Sets the target to a new target (`newTarget`).
     /// @notice Can only be called by the current owner.
-    function setTarget(address _target) public onlyOwner {
+    function setTarget(address _newTarget) public onlyOwner {
         address previousTarget = target;
-        target = _target;
-        emit TargetSet(previousTarget, _target);
+        target = _newTarget;
+        emit TargetSet(previousTarget, _newTarget);
     }
+
+    /*///////////////////////////////////////////////////////////////
+                            USER ACTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Call claim on the vesting contract
+    /// @notice Can be called by any address.
+    function claimBico() public {
+        uint256 balanceBefore = bico.balanceOf(address(avatar));
+        (, bytes memory data) = avatar.call(abi.encodeWithSignature("claim()"));
+        bool sucess = exec(target, 0, data, Enum.Operation.Call);
+        if (!sucess) revert ClaimBicoFailed();
+        uint256 balanceAfter = bico.balanceOf(address(avatar));
+        emit ClaimedBico(balanceAfter - balanceBefore);
+    }
+
+    /// @dev Stake BICO tokens
+    /// @notice Can be called by any address.
+    function stakeBico() public {
+        uint256 balanceBefore = bico.balanceOf(address(avatar));
+        (, bytes memory data) = avatar.call(
+            abi.encodeWithSignature(
+                "stake(address,amount)",
+                avatar,
+                bico.balanceOf(address(avatar))
+            )
+        );
+        bool sucess = exec(target, 0, data, Enum.Operation.Call);
+        if (!sucess) revert StakeBicoFailed();
+        uint256 balanceAfter = bico.balanceOf(address(avatar));
+        emit StakedBico(balanceBefore - balanceAfter);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            INTERNAL LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /// @dev Passes a transaction to be executed by the avatar.
     /// @notice Can only be called by this contract.
@@ -97,16 +166,4 @@ contract BicoSafeModule is Owned {
 
         return (success, returnData);
     }
-
-    /*///////////////////////////////////////////////////////////////
-                            USER ACTIONS
-    //////////////////////////////////////////////////////////////*/
-
-    // 1. call claim on the vesting contract
-    // 2. call claim on the staking contract
-    // 3. call skate BICO in the vault
-
-    /*///////////////////////////////////////////////////////////////
-                            INTERNAL LOGIC
-    //////////////////////////////////////////////////////////////*/
 }
