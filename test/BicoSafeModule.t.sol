@@ -4,6 +4,8 @@ pragma solidity ^0.8.15;
 import {Test} from "forge-std/Test.sol";
 import {TestAvatar} from "../src/mocks/TestAvatar.sol";
 import {MockBICO} from "../src/mocks/MockBICO.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+
 import {BicoSafeModule} from "../src/BicoSafeModule.sol";
 import {BicoVesting} from "../src/mocks/BicoVesting.sol";
 
@@ -26,14 +28,16 @@ contract BicoSafeModuleTest is Test {
     MockBICO bico;
     TestAvatar avatar;
 
-    function setup() public {
+    function setUp() public {
         avatar = new TestAvatar();
-        bicoModule = new BicoSafeModule(deployer);
+        bicoModule = new BicoSafeModule(address(this));
         bico = new MockBICO();
         vesting = new BicoVesting(address(bico));
 
         // set up vesting contract
-        bico.mint(address(vesting), 119999997000000000000000);
+        // bico.mint(address(this), vestAmount);
+        bico.approve(address(vesting), 100000000 * 10**18);
+        // bico.transfer(address(vesting), vestAmount - unlockAmount);
         vesting.createClaim(
             address(avatar),
             vestAmount,
@@ -47,5 +51,11 @@ contract BicoSafeModuleTest is Test {
         bicoModule.setAvatar(address(avatar));
         bicoModule.setTarget(address(avatar));
         avatar.enableModule(address(bicoModule));
+    }
+
+    function testSetup() public {
+        assertEq(address(bicoModule.avatar()), address(avatar));
+        assertEq(address(bicoModule.target()), address(avatar));
+        assertEq(avatar.isModuleEnabled(address(bicoModule)), true);
     }
 }
