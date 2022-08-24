@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "./safe-contracts/common/Enum.sol";
+import "safe-contracts/common/Enum.sol";
+import "zodiac/core/Module.sol";
 
-interface GnosisSafe {
+interface GnosisSafe is Module {
     /// @dev Allows a Module to execute a Safe transaction without any further confirmations.
     /// @param to Destination address of module transaction.
     /// @param value Ether value of module transaction.
