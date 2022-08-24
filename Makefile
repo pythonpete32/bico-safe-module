@@ -9,9 +9,11 @@ install:; forge install
 update:; forge update
 
 # Build & test
-build  :; forge build
-test   :; forge test
-trace   :; forge test -vvv
-clean  :; forge clean
+build    :; forge build
+test     :; forge test
+test_f	 :; forge test --fork-url ${MAINNET_RPC} --etherscan-api-key ${ETHERSCAN_KEY}
+trace    :; forge test -vvv
+clean    :; forge clean
 snapshot :; forge snapshot
-fmt    :; forge fmt
+fmt      :; forge fmt
+
